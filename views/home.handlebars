@@ -1,0 +1,16 @@
+<p>
+Is fridge open:
+{{#if status.doorOpenNow}}
+<b>yes</b>
+{{else}}
+no
+{{/if}}
+</p>
+
+{{#if status.doorLastOpen}}
+<p>Door last open: {{status.doorLastOpen}}</p>
+{{/if}}
+
+<p>
+<a href="status">JSON Rest API</a>
+</p>
