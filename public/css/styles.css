@@ -1,0 +1,77 @@
+body {
+    font-family: sans-serif;
+    text-align: center;
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+#fridge-open-or-closed {
+    font-size: 200%;
+}
+
+#fridge-open-or-closed.undefined .open-value {
+    color: rgb(90%, 90%, 90%);
+}
+
+#fridge-open-or-closed.undefined .open-value:after {
+    display: inline;
+    content: "?";
+    color: black;
+}
+
+#fridge-open-or-closed.closed .open-value {
+    color: green;
+}
+
+#fridge-open-or-closed.open .open-value {
+    color: red;
+}
+
+#details-section {
+    width: 600px;
+    max-width: 100%;
+    display: inline-block;
+}
+
+details {
+    display: block;
+    margin: 1em 0;
+}
+
+details > summary {
+    background: rgba(0,0,0, 0.8);
+    color: white;
+    text-align: left;
+    padding: 0.5rem 0 0.5rem 1rem;
+}
+
+details > div {
+    background: rgba(0,0,0,0.1);
+    padding: 10px 20px;
+    border-radius: 0px 0px 10px 10px;
+}
+
+details > div > table {
+    width: 100%;
+    text-align: left;
+}
+
+details > div > table th {
+    font-size: 100%;
+    font-weight: bold;
+}
+
+#footer {
+    font-size: small;
+    margin-top: 2rem;
+    text-align: center;
+    color: gray;
+    border-top: 1px solid silver;
+    padding-top: 8px;
+}

@@ -1,16 +1,31 @@
-<p>
-Is fridge open:
-{{#if status.doorOpenNow}}
-<b>yes</b>
-{{else}}
-no
-{{/if}}
+<p id="fridge-open-or-closed" class="{{status.currentStatus}}">
+Is Fridge Currently Open:
+<span class="open-value">{{#if status.doorOpenNow}}yes{{else}}no{{/if}}</span>
 </p>
 
-{{#if status.doorLastOpen}}
-<p>Door last open: {{status.doorLastOpen}}</p>
-{{/if}}
+<div id="details-section">
 
-<p>
-<a href="status">JSON Rest API</a>
-</p>
+<details>
+<summary>Last Updates</summary>
+<div>
+<p>Door opened last time:
+{{#if status.doorLastOpen}}{{status.doorLastOpen}}{{else}}n/a{{/if}}</p>
+
+<p>Door closed last time: 
+{{#if status.doorLastClosed}}{{status.doorLastClosed}}{{else}}n/a{{/if}}</p>
+</div>
+</details>
+
+<details>
+<summary>Event History</summary>
+<div>
+<table>
+<tr><th>Time</th><th>Open</th><th>Status</th></tr>
+{{#each history}}
+<tr><td>{{time}}</td><td>{{isOpen}}</td><td>{{newStatus}}</td></tr>
+{{/each}}
+</table>
+</div>
+</details>
+
+</div>
