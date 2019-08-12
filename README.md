@@ -1,14 +1,12 @@
-![Fridge Cop Logo](/public/images/fridgecop.png =128x128)
 # Fridge Cop
+
+<img src="https://github.com/alump/fridgecop/raw/master/public/images/fridgecop.png" width="128" height="128">
+
+<img src="https://github.com/alump/fridgecop/raw/master/docs/notification-demo.png">
 
 ## What Is It?
 
 Me just trying to do simple REST service to call via IFTTT when it receives on/off signals from my IOT door open sensor. Idea is to use this to trigger alarm if fridge door is left open for more than N minutes. This is just fastly written PoC, free free to steal and adapt if useful.
-
-## Version History
-
-### 0.0.1 Initialial Release (TBD)
-- Still under development
 
 ## Usage
 
@@ -73,6 +71,11 @@ You can get initial configuration copying example file to your config:
 | "timeZone" | "America/Los_Angeles"  | Time zone used with times |
 | "vapidPublicKey" | | Generate value with `./node_modules/.bin/web-push generate-vapid-keys` |
 | "vapidPrivateKey" | | Generate value with `./node_modules/.bin/web-push generate-vapid-keys` |
+
+## Version History
+
+### 0.0.1 Initialial Release (TBD)
+- Still under development
 
 ## Dependencies
 
