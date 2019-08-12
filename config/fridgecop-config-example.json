@@ -9,5 +9,6 @@
     "vapidPublicKey": "generate",
     "vapidPrivateKey": "generate",
     "dbPath": "./data",
-    "email": "john.doe@example.com"
+    "email": "john.doe@example.com",
+    "serviceWorkerScope": "/"
 }
