@@ -1,6 +1,7 @@
 body {
     font-family: sans-serif;
     text-align: center;
+    --app-color: rgb(92,160,192);
 }
 
 a {
@@ -11,8 +12,26 @@ a:hover {
     text-decoration: underline;
 }
 
+#trigger-push {
+    background: var(--app-color, rgb(92,92,192));
+    color: white;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    font-size: 100%;
+    padding: 8px 20px;
+    border: none;
+    box-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+}
+
 #fridge-open-or-closed {
     font-size: 200%;
+}
+
+#fridge-open-or-closed .open-value {
+    display: block;
+    text-align: center;
+    font-size: 300%;
+    text-transform: capitalize;
 }
 
 #fridge-open-or-closed.undefined .open-value {
@@ -45,7 +64,9 @@ details {
 }
 
 details > summary {
-    background: rgba(0,0,0, 0.8);
+    outline: none;
+    border: none;
+    background: var(--app-color, rgb(92,92,192));
     color: white;
     text-align: left;
     padding: 0.5rem 0 0.5rem 1rem;

@@ -1,0 +1,13 @@
+{
+    "alarmMinutes" : 3,
+    "deviceName" : "Fridge Door",
+    "historySize" : 10,
+    "httpPort" : 3000,
+    "secretKey" : "password",
+    "timeZone" : "America/Los_Angeles",
+
+    "vapidPublicKey": "generate",
+    "vapidPrivateKey": "generate",
+    "dbPath": "./data",
+    "email": "john.doe@example.com"
+}

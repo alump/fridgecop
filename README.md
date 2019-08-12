@@ -1,3 +1,4 @@
+![Fridge Cop Logo](/public/images/fridgecop.png =128x128)
 # Fridge Cop
 
 ## What Is It?
@@ -11,13 +12,27 @@ Me just trying to do simple REST service to call via IFTTT when it receives on/o
 
 ## Usage
 
-### Pull and Run Locally...
+### Pull code and dependencies
 To run app you need to have git, node and npm available on your machine.
 > git clone https://github.com/alump/fridgecop.git
 
 > cd fridgecop
 
 > npm install
+
+### Configuration
+
+To define configuration, make actual config file from example file.
+
+> cp config/fridgecop-config-example.json config/fridgecop-config.json
+
+ In file there are values `` and ``, generate those values with command:
+
+>`./node_modules/.bin/web-push generate-vapid-keys`
+
+After you have updated `config/fridgecop-config.json`, you can simply start application with:
+
+### Run
 
 > node app.js
 
@@ -38,3 +53,33 @@ To read the latest events (GET): http://localhost:3000/history
 #### Browser
 
 There is also page for browser: http://localhost:3000
+
+
+### Configuration
+
+You can get initial configuration copying example file to your config:
+> cp config/fridgecop-config-example.json config/fridgecop-config.json
+
+#### Configuration Values in config/fridgecop-config.json
+| Key | Example Value | Description |
+|---|---|---|
+| "alarmMinutes"  | 3  | How long door has to be open to cause alarm  |
+| "dbPath" | "./data" | Path were app's db files are stored |
+| "deviceName"  |  "Fridge Door" |  Name of your device |
+| "email"  |  "john.doe@example.com" |  Your email address |
+| "historySize"  | 10  | Amount of latest history events given by API  |
+| "httpPort"  | 3000 | Which TCP port app will listen  |
+| "secretKey"  | "password"  | Secret key needed in open and closed calls  |
+| "timeZone" | "America/Los_Angeles"  | Time zone used with times |
+| "vapidPublicKey" | | Generate value with `./node_modules/.bin/web-push generate-vapid-keys` |
+| "vapidPrivateKey" | | Generate value with `./node_modules/.bin/web-push generate-vapid-keys` |
+
+## Dependencies
+
+| Library | Used for |
+|---|---|
+| express | To offer HTTP services outside |
+| express-handlebars | To template browser pages |
+| moment-timezone | To modify and present dates and times |
+| nedb | To store information over restarts |
+| web-push | To push notifications to users |

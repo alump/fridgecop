@@ -1,21 +1,18 @@
 const express = require("express");
 const exphbs  = require('express-handlebars');
 const moment = require('moment-timezone');
+const webPush = require('web-push');
+const datastore = require('nedb');
+const config = require('./config/fridgecop-config.json');
 
 const packageJson = require('./package.json');
 
 var app = express();
 
-// TODO: Move following to properties when ready
-const alarmMinutes = 3;
-const timeZone = "America/Los_Angeles";
-const deviceName = "Fridge Door";
-const historySize = 10;
-const secretKey = "todoTODOtodo";
+const alarmMilliSecs = config.alarmMinutes * 60 * 1000;
+const appStarted = moment();
 
-const alarmMilliSecs = alarmMinutes * 60 * 1000;
-
-var appStarted = moment();
+// Application state
 var fridgeOpen = false;
 var alarmTimeout = undefined;
 var lastAlarm = undefined;
@@ -24,8 +21,17 @@ var doorLastOpen = undefined;
 var doorLastClosed = undefined;
 var eventHistory = [];
 
+app.use(express.urlencoded());
+app.use(express.json());
 app.engine('handlebars', exphbs());
 app.set('view engine', 'handlebars');
+
+webPush.setVapidDetails("mailto:" + config.email,
+    config.vapidPublicKey, config.vapidPrivateKey);
+
+const db = {};
+db.webPushSubscriptions = new datastore(config.dbPath + "/webpushsubs.db");
+db.webPushSubscriptions.loadDatabase();
 
 function addToHistory(eventTimestamp, isOpen) {
     let historyEvent = {
@@ -33,7 +39,7 @@ function addToHistory(eventTimestamp, isOpen) {
         "isOpen": isOpen,
         "newStatus": getOpenStatusString()
     };
-    if(eventHistory.length >= historySize) {
+    if(eventHistory.length >= config.historySize) {
         eventHistory.shift();
     }
     eventHistory.push(historyEvent);
@@ -42,13 +48,15 @@ function addToHistory(eventTimestamp, isOpen) {
 function setOpenStatus(nowOpen) {
     let eventTimeStamp = moment();
     restCallCounter = restCallCounter + 1;
+    let wasOpen = fridgeOpen;
+    fridgeOpen = nowOpen;
+
     let actionResponse = {
-        "wasOpen": fridgeOpen,
-        "isOpen": nowOpen,
+        "wasOpen": wasOpen,
+        "isOpen": fridgeOpen,
         "currentStatus": getOpenStatusString(),
         "timestamp": formatMoment(eventTimeStamp)
     };
-    fridgeOpen = nowOpen;
 
     addToHistory(eventTimeStamp, fridgeOpen);
 
@@ -64,18 +72,47 @@ function log(message) {
     console.log(formatCurrentMoment() + " " + message);
 }
 
+function logError(message) {
+    console.error(formatCurrentMoment() + " " + message);
+}
+
 function formatCurrentMoment() {
     return formatMoment(moment());
 }
 
 function formatMoment(momentValue) {
-    return momentValue.tz(timeZone).format();
+    return momentValue.tz(config.timeZone).format();
+}
+
+function createNotificationPayload() {
+    let jsonObject = {
+        title: config.deviceName + " is open!",
+        body: "since " + doorLastOpen.format("LT"),
+        icon: "images/fridgecop.png",
+        tag: config.deviceName + "-" + formatMoment(doorLastOpen),
+        requireInteraction: true
+    };
+
+    return JSON.stringify(jsonObject);
 }
 
 function sendAlarm() {
     lastAlarm = moment();
-    log("Sending door open alarm");
+    log("Sending door open alarms...");
+    alarmTimeout = undefined;
     pendingAlarm = false;
+
+    const payload = createNotificationPayload();
+
+    db.webPushSubscriptions.find({}, function (err, docs) {
+        docs.forEach(subscription => {
+            webPush.sendNotification(subscription, payload)
+            .catch(error => {
+                logError("Submitting alarm via webpush failed");
+                logError(error);
+            });
+        });
+    });
 }
 
 function hasPendingAlarm() {
@@ -94,14 +131,14 @@ function getOpenStatusString() {
 
 function getStatusObject() {
     let statusObj = {
-        "device": deviceName,
+        "device": config.deviceName,
         "currentStatus": getOpenStatusString(),
         "version": packageJson.version,
         "updateCounter": restCallCounter,
         "doorOpenNow": fridgeOpen,
         "pendingAlarm": hasPendingAlarm(),
-        "alarmMinutes": alarmMinutes,
-        "timeZone": timeZone
+        "alarmMinutes": config.alarmMinutes,
+        "timeZone": config.timeZone
     }
     if(typeof appStarted !== "undefined") {
         statusObj.started = formatMoment(appStarted);
@@ -122,23 +159,21 @@ function validateSecretKey(req, res) {
     const receivedKey = req.query.secretKey;
     let errorObj;
 
-    console.log(req.params);
-
     if(typeof receivedKey === "undefined") {
         errorObj = errorObject("Secret key missing from REST call");
-    } else if(receivedKey !== secretKey) {
+    } else if(receivedKey !== config.secretKey) {
         errorObj = errorObject("Invalid secret key received!");
     } else {
         return true;
     }
 
-    log(errorObj.error);
     res.status(403);
     res.json(errorObj);
     return false;
 }
 
 function errorObject(message) {
+    logError(message);
     let errorObj = {
         "error": message,
         "time": formatCurrentMoment() 
@@ -146,11 +181,26 @@ function errorObject(message) {
     return errorObj;
 }
 
+function appConfigObjectForViews() {
+    return {
+        "publicVapidKey": config.vapidPublicKey
+    };
+}
+
 app.get('/', function (req, res) {
     let renderDataObj = {};
     renderDataObj.status = getStatusObject();
     renderDataObj.history = eventHistory;
+    renderDataObj.app = appConfigObjectForViews();
+    
     res.render('home', renderDataObj);
+});
+
+app.get("/push", (req, res, next) => {
+    logError("PUSH CALLED!");
+    sendAlarm();
+    let statusObj = {};
+    res.json(statusObj);
 });
 
 app.get("/status", (req, res, next) => {
@@ -192,8 +242,25 @@ app.get("/history", (req, res, next) => {
     res.json(eventHistory);
 });
 
+app.post('/subscribe', (req, res) => {
+    const subscription = req.body;
+
+    if(typeof subscription === "undefined") {
+        const errorMessage = "No subscription in subscribe call";
+        res.status(403).json(errorObject(errorMessage));
+        return;
+    }
+
+    db.webPushSubscriptions.insert(subscription, function(err, newDoc) {
+        log("WebPush Subscription " + newDoc._id + " added.");
+    });
+
+    res.status(201).json({});
+});
+
 app.use(express.static("public"));
 
-app.listen(3000, () => {
- log("Server running on port 3000");
+app.listen(config.httpPort, () => {
+ log("Started for device: " + config.deviceName);
+ log("Server running on port " + config.httpPort);
 });

@@ -1,2 +1,4 @@
 node_modules/**
 package-lock.json
+config/fridgecop-config.json
+.DS_Store
