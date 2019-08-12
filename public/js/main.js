@@ -18,8 +18,14 @@ let serviceWorkerRegister = undefined;
 
 async function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
+        const scope = serviceWorkerScope;
+        if(typeof scope === "undefined") {
+            console.error("Scope not defined");
+            return;
+        }
+
         serviceWorkerRegister = await navigator.serviceWorker.register('sw.js', {
-            scope: '/'
+            scope: scope
         });
     } else {
         console.error('Service workers are not supported in this browser');
@@ -47,7 +53,7 @@ function verifySubscription(uuid, invalidCallback) {
     };
 
     console.log("Verify current push subscription...");
-    fetch('/checkSubscription', {
+    fetch("checkSubscription", {
         method: 'POST',
         body: JSON.stringify(queryObj),
         headers: {
@@ -80,7 +86,7 @@ async function triggerPushNotification() {
             applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
         });
 
-        fetch('/subscribe', {
+        fetch("subscribe", {
             method: 'POST',
             body: JSON.stringify(subscription),
             headers: {

@@ -201,7 +201,8 @@ function errorObject(message) {
 
 function appConfigObjectForViews() {
     return {
-        "publicVapidKey": config.vapidPublicKey
+        "publicVapidKey": config.vapidPublicKey,
+        "serviceWorkerScope": config.serviceWorkerScope
     };
 }
 

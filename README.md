@@ -68,6 +68,7 @@ You can get initial configuration copying example file to your config:
 | "historySize"  | 10  | Amount of latest history events given by API  |
 | "httpPort"  | 3000 | Which TCP port app will listen  |
 | "secretKey"  | "password"  | Secret key needed in open and closed calls  |
+| "serviceWorkerScope" | "/" | Replace if your app's path if not in domain "root" |
 | "timeZone" | "America/Los_Angeles"  | Time zone used with times |
 | "vapidPublicKey" | | Generate value with `./node_modules/.bin/web-push generate-vapid-keys` |
 | "vapidPrivateKey" | | Generate value with `./node_modules/.bin/web-push generate-vapid-keys` |
