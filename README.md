@@ -83,6 +83,8 @@ You can get initial configuration copying example file to your config:
 |---|---|
 | express | To offer HTTP services outside |
 | express-handlebars | To template browser pages |
+| express-ws | To push updates to browser |
 | moment-timezone | To modify and present dates and times |
 | nedb | To store information over restarts |
+| uuid | To generate unique IDs |
 | web-push | To push notifications to users |

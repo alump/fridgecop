@@ -12,8 +12,10 @@
     </head>
     <body>
 
+        <div id="page-wrapper">
+
         <div id="header">
-            <button id="trigger-push">Click here to get notifications if fridge is left open</button>
+            <button id="trigger-push">Subscribe Door Left Open Alarms</button>
         </div>
 
         {{{body}}}
@@ -22,8 +24,14 @@
             Sami Viitanen, sami.viitanen@gmail.com
             -
             <a href="https://github.com/alump/fridgecop">GitHub</a>
-            -
+            <br>
             <a href="status">Full Status in JSON</a>
+            -
+            <span id="autorefresh-status" title="Auto Refresh requires WebSocket support">Auto Refresh: OFF</span>
+            -
+            <span id="push-status" title="Push notifications work only with Chrome">Push Notifications: OFF</span>
+        </div>
+
         </div>
 
         <script src="js/main.js" type="text/javascript"></script>

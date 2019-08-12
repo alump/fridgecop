@@ -1,13 +1,16 @@
 const express = require("express");
 const exphbs  = require('express-handlebars');
+const expressws = require('express-ws');
 const moment = require('moment-timezone');
 const webPush = require('web-push');
 const datastore = require('nedb');
+const uuidv1 = require('uuid/v1');
 const config = require('./config/fridgecop-config.json');
 
 const packageJson = require('./package.json');
 
 var app = express();
+var ws = expressws(app);
 
 const alarmMilliSecs = config.alarmMinutes * 60 * 1000;
 const appStarted = moment();
@@ -32,6 +35,11 @@ webPush.setVapidDetails("mailto:" + config.email,
 const db = {};
 db.webPushSubscriptions = new datastore(config.dbPath + "/webpushsubs.db");
 db.webPushSubscriptions.loadDatabase();
+db.webPushSubscriptions.ensureIndex({ fieldName: 'uuid', unique: true }, function (err) {
+    if(err != null) {
+        logError(err.message);
+    }
+});
 
 function addToHistory(eventTimestamp, isOpen) {
     let historyEvent = {
@@ -65,6 +73,9 @@ function setOpenStatus(nowOpen) {
     } else {
         doorLastClosed = eventTimeStamp;
     }
+
+    sendBrowserUpdates();
+
     return actionResponse;
 }
 
@@ -96,6 +107,13 @@ function createNotificationPayload() {
     return JSON.stringify(jsonObject);
 }
 
+function sendBrowserUpdates() {
+    ws.getWss().clients.forEach(ws => {
+        log("Pushing refresh via WebSocket to client");
+        ws.send("refresh");
+    });
+}
+
 function sendAlarm() {
     lastAlarm = moment();
     log("Sending door open alarms...");
@@ -105,8 +123,8 @@ function sendAlarm() {
     const payload = createNotificationPayload();
 
     db.webPushSubscriptions.find({}, function (err, docs) {
-        docs.forEach(subscription => {
-            webPush.sendNotification(subscription, payload)
+        docs.forEach(entry => {
+            webPush.sendNotification(entry.subscription, payload)
             .catch(error => {
                 logError("Submitting alarm via webpush failed");
                 logError(error);
@@ -187,6 +205,7 @@ function appConfigObjectForViews() {
     };
 }
 
+// For browser
 app.get('/', function (req, res) {
     let renderDataObj = {};
     renderDataObj.status = getStatusObject();
@@ -196,18 +215,13 @@ app.get('/', function (req, res) {
     res.render('home', renderDataObj);
 });
 
-app.get("/push", (req, res, next) => {
-    logError("PUSH CALLED!");
-    sendAlarm();
-    let statusObj = {};
-    res.json(statusObj);
-});
-
+// REST get status
 app.get("/status", (req, res, next) => {
     let statusObj = getStatusObject();
     res.json(statusObj);
     });
 
+// REST trigger door open
 app.get("/open", (req, res, next) => {
     log("Open call received");
     if(!validateSecretKey(req, res)) {
@@ -225,6 +239,7 @@ app.get("/open", (req, res, next) => {
     }
     });
 
+// REST trigger door closed
 app.get("/closed", (req, res, next) => {
     log("Closed call received");
     if(!validateSecretKey(req, res)) {
@@ -238,10 +253,37 @@ app.get("/closed", (req, res, next) => {
     res.json(resObj);
    });
 
+// REST event history
 app.get("/history", (req, res, next) => {
     res.json(eventHistory);
 });
 
+// REST check subscription status
+app.post('/checkSubscription', (req, res) => {
+    const subUuid = req.body.uuid;
+    if(typeof subUuid === "undefined") {
+        const errorMessage = "No uuid in checkSubscription call";
+        res.status(403).json(errorObject(errorMessage));
+        return;
+    }
+
+    db.webPushSubscriptions.findOne({ "uuid": subUuid }).exec(function (err, doc) {
+        if(err !== null) {
+            errorMessage = "Error while quering subscription";
+            res.status(403).json(errorObject(errorMessage));
+            return;
+        }
+
+        let found = (doc !== null);
+
+        res.json({
+            "found": found
+        });
+    });
+
+});
+
+// REST subscribe for push notifications
 app.post('/subscribe', (req, res) => {
     const subscription = req.body;
 
@@ -251,16 +293,41 @@ app.post('/subscribe', (req, res) => {
         return;
     }
 
-    db.webPushSubscriptions.insert(subscription, function(err, newDoc) {
-        log("WebPush Subscription " + newDoc._id + " added.");
-    });
+    const dbEntry = {
+        "uuid": uuidv1(),
+        "subscription": subscription,
+        "created": formatCurrentMoment()
+    };
 
-    res.status(201).json({});
+    db.webPushSubscriptions.insert(dbEntry, function(err, newDoc) {
+        log("WebPush Subscription " + dbEntry.uuid + " added (" + newDoc._id + ")");
+    });
+    
+    const responseObj = {
+        "uuid": dbEntry.uuid
+    };
+
+    res.status(201).json(responseObj);
+});
+
+app.ws('/refresher', function(ws, req) {
+    log("refresher called");
+
+    ws.on('message', function(msg) {
+        if(msg === "ping") {
+            ws.send("pong");
+        } else if(msg === "register") {
+            log("Register call from websocket");
+            ws.send("registered");
+        } else {
+            logError("Unknown message: " + msg);
+        }
+    });
 });
 
 app.use(express.static("public"));
 
 app.listen(config.httpPort, () => {
- log("Started for device: " + config.deviceName);
- log("Server running on port " + config.httpPort);
+    log("Started for device: " + config.deviceName);
+    log("Server running on port " + config.httpPort);
 });

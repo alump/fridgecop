@@ -2,6 +2,7 @@ body {
     font-family: sans-serif;
     text-align: center;
     --app-color: rgb(92,160,192);
+    --app-width: 600px;
 }
 
 a {
@@ -12,7 +13,14 @@ a:hover {
     text-decoration: underline;
 }
 
+#page-wrapper {
+    width: var(--app-width, 100%);
+    max-width: 100%;
+    display: inline-block;
+}
+
 #trigger-push {
+    visibility: hidden;
     background: var(--app-color, rgb(92,92,192));
     color: white;
     text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
@@ -53,8 +61,7 @@ a:hover {
 }
 
 #details-section {
-    width: 600px;
-    max-width: 100%;
+    width: 100%;
     display: inline-block;
 }
 

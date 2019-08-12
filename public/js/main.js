@@ -28,20 +28,77 @@ async function registerServiceWorker() {
 
 registerServiceWorker();
 
+function getCurrentPushSubscription() {
+    return window.localStorage.getItem('pushSubscription');
+}
+
+function hasPushSubscription() {
+    let currentSub = getCurrentPushSubscription();
+    if(currentSub !== null && typeof currentSub !== "undefined") {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function verifySubscription(uuid, invalidCallback) {
+    const queryObj = {
+        "uuid": uuid
+    };
+
+    console.log("Verify current push subscription...");
+    fetch('/checkSubscription', {
+        method: 'POST',
+        body: JSON.stringify(queryObj),
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        let found = data.found;
+        if(!found) {
+            console.warn("Push subscription is invalid");
+            invalidCallback();
+        } else {
+            console.log("Push subscription is valid");
+            document.getElementById("push-status").innerHTML = "Push Notifications: ON";
+        }
+    })
+    .catch(error => console.error(error.message));
+}
+
 async function triggerPushNotification() {
+
+    if(hasPushSubscription()) {
+        return;
+    }
+
     if (typeof serviceWorkerRegister !== "undefined") {
         const subscription = await serviceWorkerRegister.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
         });
 
-        await fetch('/subscribe', {
+        fetch('/subscribe', {
             method: 'POST',
             body: JSON.stringify(subscription),
             headers: {
                 'Content-Type': 'application/json',
             },
-        });
+        })
+        .then(response => response.json())
+        .then(data => {
+            let uuid = data.uuid;
+            if(typeof uuid !== "undefined") {
+                window.localStorage.setItem('pushSubscription', uuid);
+                checkIfSubscribeShouldBeHidden();
+            } else {
+                console.error("Invalid response to subscribe call :(");
+            }
+        })
+        .catch(error => console.error(error.message));
+
     } else {
         console.error('Service workers are not supported in this browser');
     }
@@ -51,6 +108,76 @@ triggerPush.addEventListener('click', () => {
     triggerPushNotification().catch(error => console.error(error));
 });
 
-if(typeof window.chrome === "undefined") {
-    triggerPush.style.display = "none";
+function checkIfSubscribeShouldBeHidden() {
+    // Hide subscribe button if not chrome, or if already subscribed 
+    if(typeof window.chrome === "undefined" || hasPushSubscription()) {
+        triggerPush.style.visibility = "hidden";
+    } else {
+        triggerPush.style.visibility = "visible";
+    }
+}
+
+function initialSubscriptionCheck() {
+    checkIfSubscribeShouldBeHidden();
+    if(hasPushSubscription()) {
+        verifySubscription(getCurrentPushSubscription(), () => {
+            window.localStorage.removeItem("pushSubscription");
+            checkIfSubscribeShouldBeHidden();
+        });
+    }
+}
+
+initialSubscriptionCheck();
+
+function getWebSocketUrl() {
+    let browserUrl = window.location;
+    let wsUrl;
+    if (browserUrl.protocol === "https:") {
+        wsUrl = "wss:";
+    } else {
+        wsUrl = "ws:";
+    }
+    wsUrl += "//" + browserUrl.host;
+    wsUrl += browserUrl.pathname;
+    if(!wsUrl.endsWith("/")) {
+        wsUrl += "/";
+    }
+    wsUrl += "refresher";
+    console.log("WebSocket URL to use: " + wsUrl);
+    return wsUrl;
+}
+
+function keepWebSockerAlive(ws) {
+    // TODO: check if still alive
+    console.log("websocket: sending ping");
+    ws.send("ping");
+}
+
+if ("WebSocket" in window) {
+    var ws = new WebSocket(getWebSocketUrl());
+    ws.onopen = function() {
+        console.log("WebSocket connection openned");
+        ws.send("register");
+    };
+    ws.onmessage = function (evt) {
+        let msg = evt.data;
+        console.log(msg);
+        if(msg === "refresh") {
+            //TODO refresh data part
+            window.location.reload();
+        } else if(msg === "pong") {
+            console.log("websocket: pong received");
+            setTimeout(() => keepWebSockerAlive(ws), (2 * 60 * 1000));
+        } else if(msg === "registered") {
+            console.log("Initial handshake done via websocket");
+            setTimeout(() => keepWebSockerAlive(ws), (2 * 60 * 1000));
+            document.getElementById("autorefresh-status").innerHTML = "Auto Refresh: ON";
+        } else {
+            console.warn("Unknown websocket message: " + msg);
+        }
+    };
+    ws.onclose = function() { 
+        console.warn("Websocket connection closed. No auto reconnecting");
+        document.getElementById("autorefresh-status").innerHTML = "Auto Refresh: OFF";
+    };
 }
